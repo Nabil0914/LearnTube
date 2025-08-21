@@ -2,6 +2,7 @@
   "name": "backend",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "dev": "tsc -b && node ./dist/index.js"
   },
@@ -9,6 +10,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/express": "^5.0.3",
+    "express": "^5.1.0",
+    "mongoose": "^8.17.2",
     "typescript": "^5.9.2"
   }
 }
