@@ -2,8 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import { z } from 'zod';
 import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
 import { User } from './models/user.models.js';
-import { PORT } from './config/config.js';
+import { PORT, JWT_PASSWORD } from './config/config.js';
 import { connectDB } from './db/db.js';
 const app = express();
 app.use(express.json());
@@ -73,8 +74,57 @@ app.post('/api/v1/register', async function (req, res){
 
 })
 
-app.post('/api/v1/login', function (req, res){
+const signinSchema = z.object({
+    username: z.string().min(3, "Username is too short").max(20, "Username is too long"),
+    email: z.string().email(),
+    password: z.string().min(1, "Password is required")
+})
+
+app.post('/api/v1/login', async function (req, res){
     //Authenticate user, return JWT
+    const parsedInput = signinSchema.safeParse(req.body);
+
+    if(!parsedInput.success){
+        res.status(ResponseStatus.INVALID_INPUT).json({
+            message: "Invalid Input"
+        })
+        return;
+    }
+
+    const { username, email, password } = parsedInput.data;
+
+    try {
+        const existingUser = await User.findOne({
+            username
+        })
+
+        if(!existingUser){
+            return res.status(ResponseStatus.USER_NOT_FOUND).json({
+                message: "User doesn't exist"
+            })
+        }
+
+        const passwordMatch = await bcrypt.compare(password, existingUser.password);
+
+        if(!passwordMatch){
+            return res.status(ResponseStatus.INVALID_CREDENTIALS).json({
+                message: "Invalid credentials"
+            })
+        }
+
+        const token = jwt.sign({
+            id: existingUser._id
+        }, JWT_PASSWORD)
+
+        return res.status(ResponseStatus.SUCCESS).json({
+            message: "Signin Successful",
+            token
+        })
+    } catch (e) {
+        return res.status(ResponseStatus.SERVER_ERROR).json({
+            message: "Something went wrong. Please try again later"
+        });
+    }
 })
 
 app.get('/api/v1/me', function (req, res){
