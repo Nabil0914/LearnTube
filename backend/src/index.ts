@@ -6,9 +6,13 @@ import jwt from 'jsonwebtoken'
 import { User } from './models/user.models.js';
 import { PORT, JWT_PASSWORD } from './config/config.js';
 import { connectDB } from './db/db.js';
+import { authMiddleware } from './middlewares/authMiddleware.js';
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+}));
 connectDB();
 
 enum ResponseStatus{
@@ -76,13 +80,13 @@ app.post('/api/v1/register', async function (req, res){
 
 const signinSchema = z.object({
     username: z.string().min(3, "Username is too short").max(20, "Username is too long"),
-    email: z.string().email(),
     password: z.string().min(1, "Password is required")
 })
 
 app.post('/api/v1/login', async function (req, res){
     //Authenticate user, return JWT
     const parsedInput = signinSchema.safeParse(req.body);
+    
 
     if(!parsedInput.success){
         res.status(ResponseStatus.INVALID_INPUT).json({
@@ -91,7 +95,7 @@ app.post('/api/v1/login', async function (req, res){
         return;
     }
 
-    const { username, email, password } = parsedInput.data;
+    const { username, password } = parsedInput.data;
 
     try {
         const existingUser = await User.findOne({
@@ -118,7 +122,12 @@ app.post('/api/v1/login', async function (req, res){
 
         return res.status(ResponseStatus.SUCCESS).json({
             message: "Signin Successful",
-            token
+            token,
+            user: {
+            id: existingUser._id,
+            username: existingUser.username,
+            email: existingUser.email
+    }
         })
     } catch (e) {
         return res.status(ResponseStatus.SERVER_ERROR).json({
@@ -127,8 +136,18 @@ app.post('/api/v1/login', async function (req, res){
     }
 })
 
-app.get('/api/v1/me', function (req, res){
+app.get('/api/v1/me', authMiddleware, function (req:any, res){
     //Get logged-in user details (protected)
+    try{
+        return res.json({
+            status: 200,
+            user: req.user
+        })
+    } catch(error){
+        return res.status(500).json({
+            message: "Server error"
+        })
+    }
 })
 
 //Playlist Routes
