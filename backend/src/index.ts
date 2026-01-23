@@ -138,10 +138,15 @@ app.post('/api/v1/login', async function (req, res){
 
 app.get('/api/v1/me', authMiddleware, function (req:any, res){
     //Get logged-in user details (protected)
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
+    
     try{
         return res.json({
             status: 200,
-            user: req.user
+            id: req.user._id,
+            username: req.user.username,
+            email: req.user.email
         })
     } catch(error){
         return res.status(500).json({
